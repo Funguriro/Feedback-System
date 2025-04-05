@@ -10,7 +10,8 @@ import {
   BarChart2, 
   Settings,
   Menu,
-  X
+  X,
+  Send
 } from "lucide-react";
 
 type NavItem = {
@@ -22,6 +23,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: <LucideHome className="w-5 h-5" /> },
   { href: "/feedback", label: "Feedback", icon: <MessageSquare className="w-5 h-5" /> },
+  { href: "/submit-feedback", label: "Submit Feedback", icon: <Send className="w-5 h-5" /> },
   { href: "/templates", label: "Email Templates", icon: <Mail className="w-5 h-5" /> },
   { href: "/forms", label: "Feedback Forms", icon: <FileText className="w-5 h-5" /> },
   { href: "/reports", label: "Reports", icon: <BarChart2 className="w-5 h-5" /> },

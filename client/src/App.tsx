@@ -8,6 +8,7 @@ import Feedback from "@/pages/feedback";
 import Templates from "@/pages/templates";
 import Forms from "@/pages/forms";
 import Settings from "@/pages/settings";
+import SubmitFeedback from "@/pages/submit-feedback";
 
 import Sidebar from "@/components/ui/sidebar";
 
@@ -36,6 +37,7 @@ function Router() {
             <Route path="/templates" component={Templates} />
             <Route path="/forms" component={Forms} />
             <Route path="/settings" component={Settings} />
+            <Route path="/submit-feedback" component={SubmitFeedback} />
             <Route component={NotFound} />
           </Switch>
         </main>
