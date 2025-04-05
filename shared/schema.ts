@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -103,6 +104,42 @@ export const insertBrandSettingsSchema = createInsertSchema(brandSettings).pick(
   emailFooter: true,
   businessId: true,
 });
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  feedback: many(feedback),
+  emailTemplates: many(emailTemplates),
+  feedbackForms: many(feedbackForms),
+  brandSettings: many(brandSettings),
+}));
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+  business: one(users, {
+    fields: [feedback.businessId],
+    references: [users.id],
+  }),
+}));
+
+export const emailTemplatesRelations = relations(emailTemplates, ({ one }) => ({
+  business: one(users, {
+    fields: [emailTemplates.businessId],
+    references: [users.id],
+  }),
+}));
+
+export const feedbackFormsRelations = relations(feedbackForms, ({ one }) => ({
+  business: one(users, {
+    fields: [feedbackForms.businessId],
+    references: [users.id],
+  }),
+}));
+
+export const brandSettingsRelations = relations(brandSettings, ({ one }) => ({
+  business: one(users, {
+    fields: [brandSettings.businessId],
+    references: [users.id],
+  }),
+}));
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
