@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { type Feedback } from "@shared/schema";
 import { 
   Table, 
@@ -11,9 +11,33 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { SentimentBadge } from "@/components/ui/sentiment-badge";
-import { Eye, MessageCircle, MoreHorizontal } from "lucide-react";
+import { 
+  Eye, 
+  MessageCircle, 
+  Trash2, 
+  MoreHorizontal, 
+  AlertTriangle 
+} from "lucide-react";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import { formatDate } from "@/lib/utils";
 
 interface FeedbackListProps {
@@ -22,6 +46,8 @@ interface FeedbackListProps {
 
 export function FeedbackList({ sentiment }: FeedbackListProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
+  const [feedbackToDelete, setFeedbackToDelete] = useState<Feedback | null>(null);
+  const { toast } = useToast();
   
   const queryKey = sentiment ? 
     [`/api/feedback?sentiment=${sentiment}`] : 
@@ -29,6 +55,42 @@ export function FeedbackList({ sentiment }: FeedbackListProps) {
     
   const { data: feedbackList, isLoading } = useQuery<Feedback[]>({
     queryKey,
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/feedback/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete feedback');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/feedback'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      
+      toast({
+        title: "Feedback deleted",
+        description: "The feedback has been successfully deleted.",
+        variant: "default",
+      });
+      
+      setFeedbackToDelete(null);
+    },
+    onError: (error) => {
+      console.error('Error deleting feedback:', error);
+      toast({
+        title: "Error",
+        description: "There was an error deleting the feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
   });
   
   if (isLoading) {
@@ -48,6 +110,16 @@ export function FeedbackList({ sentiment }: FeedbackListProps) {
   
   const handleViewFeedback = (feedback: Feedback) => {
     setSelectedFeedback(feedback);
+  };
+  
+  const handleDeleteFeedback = (feedback: Feedback) => {
+    setFeedbackToDelete(feedback);
+  };
+  
+  const confirmDelete = () => {
+    if (feedbackToDelete) {
+      deleteMutation.mutate(feedbackToDelete.id);
+    }
   };
   
   return (
@@ -97,15 +169,35 @@ export function FeedbackList({ sentiment }: FeedbackListProps) {
                           size="sm" 
                           variant="ghost" 
                           onClick={() => handleViewFeedback(feedback)}
+                          title="View"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost">
-                          <MessageCircle className="h-4 w-4" />
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          title="Delete"
+                          onClick={() => handleDeleteFeedback(feedback)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
-                        <Button size="sm" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewFeedback(feedback)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteFeedback(feedback)}>
+                              <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+                              Delete Feedback
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -208,6 +300,35 @@ export function FeedbackList({ sentiment }: FeedbackListProps) {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog 
+        open={!!feedbackToDelete} 
+        onOpenChange={(open) => !open && setFeedbackToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Confirm Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the feedback from 
+              <span className="font-medium"> {feedbackToDelete?.customer}</span>?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
