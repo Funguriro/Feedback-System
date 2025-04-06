@@ -68,7 +68,8 @@ export function FeedbackList({ sentiment }: FeedbackListProps) {
         throw new Error('Failed to delete feedback');
       }
       
-      return response.json();
+      // Server returns 204 No Content on successful deletion
+      return id;
     },
     onSuccess: () => {
       // Invalidate queries to refresh data
